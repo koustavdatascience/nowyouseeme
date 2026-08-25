@@ -17,4 +17,18 @@
 - [x] Apply bitmap-style typography, square icon controls, classic blue buttons, and 1px black outlines.
 - [x] Preserve webcam startup, background recapture, two-hand tracking status, and cloak rendering behavior.
 - [x] Verify desktop and mobile layouts, then validate the production build.
-- [ ] Save and deliver the redesigned application.
+- [x] Save and deliver the redesigned application.
+
+## External Hosting Preparation
+
+- [ ] Select the external static hosting provider and confirm HTTPS support for webcam access.
+- [ ] Prepare the build configuration and repository handoff for the selected provider.
+- [ ] Deploy or guide the provider-specific deployment process.
+- [ ] Verify the deployed site can request a webcam over HTTPS.
+
+## GitHub to Cloudflare Pages
+
+- [x] Add Cloudflare Pages build configuration and repository handoff documentation.
+- [ ] Create a dedicated GitHub repository and push the complete application source.
+- [ ] Connect the repository to Cloudflare Pages and start the production deployment.
+- [ ] Verify the public `pages.dev` address and HTTPS webcam availability.

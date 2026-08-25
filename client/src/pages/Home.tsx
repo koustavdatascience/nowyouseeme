@@ -1,238 +1,380 @@
 /**
  * Style reminder — Field Manual for Browser Magic:
- * Near-black creative-coding editorial layout, signal-lime actions, mono technical artifacts,
- * and a narrow instructional runway faithful to the supplied Invisibility Cloak Guide reference.
+ * The guide is now a live creative-coding instrument: near-black stage, signal-lime tracking
+ * feedback, technical utility surfaces, and no decorative interface that competes with the camera.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  ArrowDown,
+  AlertTriangle,
+  Aperture,
+  Camera,
   Check,
   ChevronRight,
-  Clipboard,
-  Code2,
-  Frame,
-  Github,
+  CircleHelp,
   Hand,
-  Laptop,
-  Play,
+  LoaderCircle,
+  Maximize2,
+  RefreshCw,
   ScanLine,
+  ShieldCheck,
   Sparkles,
-  Video,
+  VideoOff,
+  X,
 } from "lucide-react";
 
-type PromptId = "main" | "flicker" | "alignment" | "feather" | "learn";
+type Point = { x: number; y: number };
+type AppState = "idle" | "loading" | "active" | "error";
+type TrackingState = "idle" | "searching" | "ready" | "cloak";
 
-const prompts: Record<PromptId, string> = {
-  main: `Build me a single-file web app (one index.html, everything inline) that creates an "invisibility cloak" effect:
+const VISION_MODULE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm";
+const WASM_ROOT = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const HAND_MODEL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task";
 
-Step 1 — Use my laptop camera (getUserMedia) and stream the live video full-screen onto the page, mirrored like a selfie.
-
-Step 2 — Use Google's free MediaPipe hand-tracking library (load @mediapipe/tasks-vision from the CDN, HandLandmarker, up to 2 hands) to track my fingers in real time.
-
-Step 3 — When both hands are visible, draw a polygon connecting four points: the tips of both index fingers (landmark 8) and both thumbs (landmark 4).
-
-Step 4 — Take one snapshot of the camera the moment the stream starts (that's my empty room). Fill the polygon with the MATCHING section of that snapshot, so whatever is behind me gets painted over my body and I look invisible inside the frame.
-
-Also add: a button to re-take the background snapshot, and comment all the code clearly so I can read through and understand the logic.`,
-  flicker:
-    "The polygon flickers when my hands move fast. Smooth the fingertip positions over the last few frames so the cloak feels stable.",
-  alignment:
-    "The background inside the polygon doesn't line up with the real background around it. Make sure the snapshot and the live video are drawn at exactly the same size and mirroring.",
-  feather:
-    'Soften the edges of the polygon with a slight feather/blur so the cloak blends into the live video instead of having a hard edge.',
-  learn:
-    "Walk me through this code like I'm an engineer who's never used MediaPipe. What are hand landmarks 4 and 8? How does canvas clipping make the fill only appear inside the polygon? Quiz me at the end.",
-};
-
-const processSteps = [
-  { icon: Video, label: "Camera" },
-  { icon: Hand, label: "Hand tracking" },
-  { icon: Frame, label: "Polygon" },
-  { icon: Sparkles, label: "Fill with background" },
-];
-
-function CopyButton({ id, compact = false }: { id: PromptId; compact?: boolean }) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(prompts[id]);
-    } catch {
-      const fallback = document.createElement("textarea");
-      fallback.value = prompts[id];
-      fallback.setAttribute("readonly", "");
-      fallback.style.position = "fixed";
-      fallback.style.opacity = "0";
-      document.body.appendChild(fallback);
-      fallback.select();
-      document.execCommand("copy");
-      document.body.removeChild(fallback);
-    }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
-  };
-
-  return (
-    <button
-      type="button"
-      className={`copy-button ${compact ? "copy-button--compact" : ""} ${copied ? "is-copied" : ""}`}
-      onClick={copy}
-      aria-label={`Copy ${id} prompt`}
-    >
-      {copied ? <Check size={compact ? 13 : 15} strokeWidth={2.5} /> : <Clipboard size={compact ? 13 : 15} />}
-      <span>{copied ? "Copied" : "Copy"}</span>
-    </button>
-  );
+function drawMirrored(context: CanvasRenderingContext2D, source: CanvasImageSource, width: number, height: number) {
+  context.save();
+  context.translate(width, 0);
+  context.scale(-1, 1);
+  context.drawImage(source, 0, 0, width, height);
+  context.restore();
 }
 
-function SectionTag({ children }: { children: string }) {
-  return <span className="section-tag">{children}</span>;
+function drawPolygon(context: CanvasRenderingContext2D, points: Point[]) {
+  context.beginPath();
+  context.moveTo(points[0].x, points[0].y);
+  for (let index = 1; index < points.length; index += 1) context.lineTo(points[index].x, points[index].y);
+  context.closePath();
 }
 
 export default function Home() {
-  const scrollToBuild = () => document.getElementById("build")?.scrollIntoView({ behavior: "smooth" });
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const backgroundRef = useRef<HTMLCanvasElement>(document.createElement("canvas"));
+  const maskRef = useRef<HTMLCanvasElement>(document.createElement("canvas"));
+  const landmarkerRef = useRef<any>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animationRef = useRef<number | null>(null);
+  const smoothedPolygonRef = useRef<Point[] | null>(null);
+  const trackingStateRef = useRef<TrackingState>("idle");
+  const handCountRef = useRef(0);
+  const backgroundCapturedRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  const [appState, setAppState] = useState<AppState>("idle");
+  const [trackingState, setTrackingState] = useState<TrackingState>("idle");
+  const [handCount, setHandCount] = useState(0);
+  const [backgroundCaptured, setBackgroundCaptured] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("Camera is off. Step out of frame, then start the camera.");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const updateTrackingState = (next: TrackingState) => {
+    if (trackingStateRef.current !== next) {
+      trackingStateRef.current = next;
+      setTrackingState(next);
+    }
+  };
+
+  const updateHandCount = (next: number) => {
+    if (handCountRef.current !== next) {
+      handCountRef.current = next;
+      setHandCount(next);
+    }
+  };
+
+  const captureBackground = () => {
+    const video = videoRef.current;
+    if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return false;
+
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    if (!width || !height) return false;
+
+    const background = backgroundRef.current;
+    background.width = width;
+    background.height = height;
+    const backgroundContext = background.getContext("2d");
+    if (!backgroundContext) return false;
+    backgroundContext.clearRect(0, 0, width, height);
+    drawMirrored(backgroundContext, video, width, height);
+    backgroundCapturedRef.current = true;
+    setBackgroundCaptured(true);
+    setStatusMessage("Background captured. Step into frame and show both hands.");
+    updateTrackingState("searching");
+    return true;
+  };
+
+  const normalizeHandToPoint = (landmark: { x: number; y: number }, width: number, height: number): Point => ({
+    x: (1 - landmark.x) * width,
+    y: landmark.y * height,
+  });
+
+  const renderFrame = () => {
+    const video = videoRef.current;
+    const output = canvasRef.current;
+    const landmarker = landmarkerRef.current;
+    if (!video || !output || !landmarker || !streamRef.current || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      animationRef.current = window.requestAnimationFrame(renderFrame);
+      return;
+    }
+
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    if (!width || !height) {
+      animationRef.current = window.requestAnimationFrame(renderFrame);
+      return;
+    }
+
+    if (output.width !== width || output.height !== height) {
+      output.width = width;
+      output.height = height;
+      maskRef.current.width = width;
+      maskRef.current.height = height;
+    }
+
+    const outputContext = output.getContext("2d");
+    const maskContext = maskRef.current.getContext("2d");
+    if (!outputContext || !maskContext) {
+      animationRef.current = window.requestAnimationFrame(renderFrame);
+      return;
+    }
+
+    outputContext.clearRect(0, 0, width, height);
+    drawMirrored(outputContext, video, width, height);
+
+    let detectedHands: any[] = [];
+    try {
+      const result = landmarker.detectForVideo(video, performance.now());
+      detectedHands = result.landmarks ?? [];
+    } catch {
+      detectedHands = [];
+    }
+    updateHandCount(detectedHands.length);
+
+    const background = backgroundRef.current;
+    const hasMatchingBackground = background.width === width && background.height === height;
+    if (detectedHands.length >= 2 && hasMatchingBackground) {
+      const handPairs = detectedHands
+        .slice(0, 2)
+        .map((hand) => ({
+          index: normalizeHandToPoint(hand[8], width, height),
+          thumb: normalizeHandToPoint(hand[4], width, height),
+        }))
+        .sort((a, b) => a.index.x - b.index.x);
+      const targetPolygon = [handPairs[0].index, handPairs[1].index, handPairs[1].thumb, handPairs[0].thumb];
+      const priorPolygon = smoothedPolygonRef.current;
+      const polygon = targetPolygon.map((point, index) => {
+        const prior = priorPolygon?.[index];
+        return prior
+          ? { x: prior.x + (point.x - prior.x) * 0.31, y: prior.y + (point.y - prior.y) * 0.31 }
+          : point;
+      });
+      smoothedPolygonRef.current = polygon;
+
+      maskContext.clearRect(0, 0, width, height);
+      maskContext.save();
+      maskContext.filter = `blur(${Math.max(3, Math.round(width / 420))}px)`;
+      maskContext.fillStyle = "#ffffff";
+      drawPolygon(maskContext, polygon);
+      maskContext.fill();
+      maskContext.restore();
+      maskContext.globalCompositeOperation = "source-in";
+      maskContext.drawImage(background, 0, 0, width, height);
+      maskContext.globalCompositeOperation = "source-over";
+      outputContext.drawImage(maskRef.current, 0, 0, width, height);
+
+      outputContext.save();
+      outputContext.lineWidth = Math.max(1.5, width / 780);
+      outputContext.strokeStyle = "rgba(124, 255, 107, 0.9)";
+      outputContext.shadowColor = "rgba(124, 255, 107, 0.72)";
+      outputContext.shadowBlur = Math.max(4, width / 175);
+      drawPolygon(outputContext, polygon);
+      outputContext.stroke();
+      polygon.forEach((point) => {
+        outputContext.beginPath();
+        outputContext.fillStyle = "#7cff6b";
+        outputContext.arc(point.x, point.y, Math.max(3, width / 210), 0, Math.PI * 2);
+        outputContext.fill();
+      });
+      outputContext.restore();
+      updateTrackingState("cloak");
+      setStatusMessage("Cloak active. Keep your index fingers high and thumbs together.");
+    } else {
+      smoothedPolygonRef.current = null;
+      if (backgroundCapturedRef.current) {
+        updateTrackingState(detectedHands.length ? "ready" : "searching");
+        if (detectedHands.length < 2) setStatusMessage("Show both hands to make a four-corner frame.");
+        else setStatusMessage("Two hands found. Bring index fingers up and thumbs together.");
+      }
+    }
+
+    animationRef.current = window.requestAnimationFrame(renderFrame);
+  };
+
+  const loadHandLandmarker = async () => {
+    if (landmarkerRef.current) return;
+    const tasksVision = await import(/* @vite-ignore */ VISION_MODULE);
+    const vision = await tasksVision.FilesetResolver.forVisionTasks(WASM_ROOT);
+    landmarkerRef.current = await tasksVision.HandLandmarker.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: HAND_MODEL, delegate: "GPU" },
+      runningMode: "VIDEO",
+      numHands: 2,
+      minHandDetectionConfidence: 0.55,
+      minHandPresenceConfidence: 0.5,
+      minTrackingConfidence: 0.55,
+    });
+  };
+
+  const startCamera = async () => {
+    if (appState === "loading") return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setAppState("error");
+      setErrorMessage("This browser does not expose webcam access. Open the app over HTTPS or localhost in a current browser.");
+      return;
+    }
+
+    setAppState("loading");
+    setErrorMessage("");
+    setStatusMessage("Loading hand tracking and requesting camera access…");
+    try {
+      await loadHandLandmarker();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      streamRef.current = stream;
+      const video = videoRef.current;
+      if (!video) throw new Error("The camera preview could not initialize.");
+      video.srcObject = stream;
+      await video.play();
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      captureBackground();
+      setAppState("active");
+      updateTrackingState("searching");
+      animationRef.current = window.requestAnimationFrame(renderFrame);
+    } catch (error) {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      setAppState("error");
+      const name = error instanceof DOMException ? error.name : "";
+      setErrorMessage(
+        name === "NotAllowedError"
+          ? "Camera permission was blocked. Allow camera access in your browser settings, then try again."
+          : "The camera or hand-tracking model could not start. Check your connection, then try again.",
+      );
+      setStatusMessage("Camera unavailable.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (animationRef.current) window.cancelAnimationFrame(animationRef.current);
+    animationRef.current = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    const output = canvasRef.current;
+    output?.getContext("2d")?.clearRect(0, 0, output.width, output.height);
+    backgroundRef.current.width = 0;
+    backgroundRef.current.height = 0;
+    smoothedPolygonRef.current = null;
+    backgroundCapturedRef.current = false;
+    setAppState("idle");
+    setBackgroundCaptured(false);
+    setHandCount(0);
+    handCountRef.current = 0;
+    updateTrackingState("idle");
+    setStatusMessage("Camera is off. Step out of frame, then start the camera.");
+  };
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (animationRef.current) window.cancelAnimationFrame(animationRef.current);
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      landmarkerRef.current?.close?.();
+    };
+  }, []);
+
+  const appIsActive = appState === "active";
+  const stageLabel = appState === "loading" ? "INITIALIZING" : appIsActive ? "LIVE CAMERA" : appState === "error" ? "SETUP BLOCKED" : "CAMERA OFF";
+  const trackingLabel = trackingState === "cloak" ? "CLOAK ACTIVE" : trackingState === "ready" ? "ALIGNING HANDS" : trackingState === "searching" ? "SEARCHING" : "STANDBY";
 
   return (
-    <div className="guide-shell">
-      <header className="site-header">
-        <a href="#top" className="brand" aria-label="Invisibility Cloak Guide home">
-          <img src="/manus-storage/cloak-aperture-mark_2003c067.png" alt="" className="brand-mark" />
-          <span>INVISIBILITY / GUIDE</span>
+    <div className="cloak-app">
+      <video ref={videoRef} className="camera-source" playsInline muted aria-hidden="true" />
+      <header className="app-header">
+        <a className="app-brand" href="#top" aria-label="Invisibility Cloak application home">
+          <img src="/manus-storage/cloak-aperture-mark_2003c067.png" alt="" />
+          <span>INVISIBILITY / CLOAK</span>
         </a>
-        <button type="button" className="header-cta" onClick={scrollToBuild}>
-          <Code2 size={15} />
-          Build it
-        </button>
+        <div className="header-status"><span className={appIsActive ? "status-lamp status-lamp--live" : "status-lamp"} />{appIsActive ? "LOCAL CAMERA SESSION" : "PRIVATE BY DEFAULT"}</div>
       </header>
 
-      <main id="top">
-        <section className="hero" aria-labelledby="page-title">
-          <div className="hero-art" aria-hidden="true" />
-          <div className="hero-grid" aria-hidden="true" />
-          <div className="hero-content">
-            <p className="eyebrow"><span className="eyebrow-dot" />VIBE-CODED FX · NO TOUCHDESIGNER NEEDED</p>
-            <h1 id="page-title">Build your own<br /><em>Invisibility Cloak</em></h1>
-            <p className="hero-intro">
-              The cinematic hand-frame effect from a reel — built with <strong>zero</strong> new software.
-              Just your laptop camera, your browser, and Claude writing the code.
-            </p>
-            <div className="maker-line"><span>Made by</span> <strong>@kaylanrupa</strong></div>
-            <div className="ingredient-row" aria-label="What you need at a glance">
-              <span><Sparkles size={14} />Claude</span>
-              <span><Laptop size={14} />Laptop camera</span>
-              <span><ScanLine size={14} />Any browser</span>
-              <span><span className="mini-cash">$</span>100% free</span>
-            </div>
-            <button type="button" className="primary-action" onClick={scrollToBuild}>
-              <Play size={15} fill="currentColor" />
-              Read the recipe <ArrowDown size={15} />
-            </button>
-          </div>
-          <div className="hero-index" aria-hidden="true"><span>01</span><i /></div>
+      <main id="top" className="app-main">
+        <section className="app-intro" aria-labelledby="app-title">
+          <p className="eyebrow"><span />REAL-TIME CAMERA EFFECT</p>
+          <h1 id="app-title">Make a window<br />through yourself.</h1>
+          <p>Capture the room, step back in, then frame the space between your hands. The canvas paints your original background inside the polygon.</p>
         </section>
 
-        <article className="guide-runway">
-          <section className="chapter chapter--trick">
-            <div className="chapter-heading">
-              <SectionTag>The trick</SectionTag>
-              <h2>How it actually works</h2>
+        <section className="cloak-stage" aria-label="Live invisibility cloak camera stage">
+          <div className="stage-corners" aria-hidden="true"><i /><i /><i /><i /></div>
+          <canvas ref={canvasRef} className={`camera-canvas ${appIsActive ? "is-live" : ""}`} />
+          {!appIsActive && appState !== "loading" && (
+            <div className="stage-placeholder">
+              {appState === "error" ? <AlertTriangle size={33} /> : <Aperture size={38} />}
+              <p className="placeholder-kicker">{appState === "error" ? "CAMERA SETUP NEEDS ATTENTION" : "THE VIEWFINDER IS WAITING"}</p>
+              <strong>{appState === "error" ? "Permission or setup issue" : "Your empty room becomes the cloak"}</strong>
+              <span>{appState === "error" ? errorMessage : "Step out of frame before starting so the first snapshot has no subject in it."}</span>
             </div>
-            <div className="chapter-body">
-              <p>
-                There&apos;s no magic and no AI image generation. The app takes a photo of your <strong>empty room</strong> the moment it starts. Then, wherever you stretch a frame between your fingers, it paints that saved background <strong>back over you.</strong> Empty room on top of your body = you look invisible.
-              </p>
-              <div className="process-strip" role="list" aria-label="How the invisibility effect works">
-                {processSteps.map(({ icon: Icon, label }, index) => (
-                  <div className="process-node" role="listitem" key={label}>
-                    <span><Icon size={15} /></span><b>{label}</b>
-                    {index < processSteps.length - 1 && <ChevronRight className="process-arrow" size={16} />}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
+          )}
+          {appState === "loading" && (
+            <div className="stage-placeholder stage-placeholder--loading"><LoaderCircle size={34} className="spin" /><strong>Warming up the hand tracker</strong><span>Requesting the camera and downloading the local model.</span></div>
+          )}
+          <div className="stage-hud">
+            <div><span className={appIsActive ? "hud-live-dot" : "hud-dot"} />{stageLabel}</div>
+            <div className={`tracking-chip tracking-chip--${trackingState}`}><ScanLine size={13} />{trackingLabel}</div>
+          </div>
+          <div className="hand-meter"><Hand size={14} /><span><strong>{Math.min(handCount, 2)}</strong> / 2 HANDS</span></div>
+          <div className="resolution-meter"><Maximize2 size={13} />MIRRORED VIEW</div>
+        </section>
 
-          <section className="chapter chapter--needs">
-            <div className="chapter-heading">
-              <SectionTag>Before you start</SectionTag>
-              <h2>What you need</h2>
-            </div>
-            <div className="chapter-body checklist">
-              <div className="check-item"><span>1</span><p><strong>Claude</strong> — claude.ai works fine (free tier included). If you use Claude Code, even better: it saves the file for you.</p></div>
-              <div className="check-item"><span>2</span><p><strong>A laptop with a webcam</strong> and Chrome, Safari, or any modern browser.</p></div>
-              <div className="check-item"><span>3</span><p><strong>Nothing else.</strong> No TouchDesigner, no After Effects, no installs. Google&apos;s hand-tracking tool (MediaPipe) loads free from the web inside your app.</p></div>
-            </div>
-          </section>
+        <section className="control-deck" aria-label="Camera controls">
+          <div className="control-status" aria-live="polite">
+            <span className={`signal-disc signal-disc--${trackingState}`} />
+            <p><b>{trackingState === "cloak" ? "Effect running" : appState === "loading" ? "Setting up" : "System note"}</b>{statusMessage}</p>
+          </div>
+          <div className="control-actions">
+            {!appIsActive ? (
+              <button type="button" className="button button--primary" onClick={startCamera} disabled={appState === "loading"}>
+                {appState === "loading" ? <LoaderCircle className="spin" size={16} /> : <Camera size={16} />}
+                {appState === "error" ? "Try camera again" : "Start camera"}
+              </button>
+            ) : (
+              <>
+                <button type="button" className="button button--primary" onClick={captureBackground}><RefreshCw size={16} />Retake background</button>
+                <button type="button" className="button button--quiet" onClick={stopCamera}><VideoOff size={15} />Stop</button>
+              </>
+            )}
+          </div>
+        </section>
 
-          <section className="chapter chapter--build" id="build">
-            <div className="chapter-heading">
-              <SectionTag>The build</SectionTag>
-              <h2>One prompt does it all</h2>
-            </div>
-            <div className="chapter-body">
-              <p>
-                This is the exact recipe from the reel — the same four steps rolled into one copy-paste prompt. Paste it, wait, and Claude gives you a single HTML file.
-              </p>
-              <div className="prompt-card prompt-card--main">
-                <div className="prompt-topline"><span>Paste this into Claude</span><CopyButton id="main" /></div>
-                <pre><code>{prompts.main}</code></pre>
-              </div>
-              <aside className="callout"><i>!</i><p><strong>Take the empty-room snapshot first.</strong> Step out of frame (or duck!) before your camera starts — otherwise, the cloak will paint you back over yourself.</p></aside>
-            </div>
-          </section>
-
-          <section className="chapter chapter--run">
-            <div className="chapter-heading">
-              <SectionTag>Run it</SectionTag>
-              <h2>Open your app</h2>
-            </div>
-            <div className="chapter-body">
-              <p>Browsers only allow camera access on a proper local address, so don&apos;t just double-click the file.</p>
-              <ol className="run-list">
-                <li><span>01</span><p>Save Claude&apos;s code as <code>index.html</code> in a new folder.</p></li>
-                <li><span>02</span><p>Open Terminal in that folder and run <code>python3 -m http.server 8000</code>.</p></li>
-                <li><span>03</span><p>Go to <code>http://localhost:8000</code> in your browser and allow the camera.</p></li>
-                <li><span>04</span><p>Step out for the snapshot, come back, make a frame with your fingers — you&apos;re invisible.</p></li>
-              </ol>
-              <div className="pose-note"><Hand size={19} /><p><b>The pose:</b> thumbs together at the bottom, index fingers up — like you&apos;re framing a photo with both hands. Those four fingertips are the corners of your cloak.</p></div>
-            </div>
-          </section>
-
-          <section className="chapter chapter--polish">
-            <div className="chapter-heading">
-              <SectionTag>Polish</SectionTag>
-              <h2>Fix the bits that look off</h2>
-            </div>
-            <div className="chapter-body">
-              <p>Mine wasn&apos;t perfect on the first try either. Test it, describe the issue precisely, and use one of these refinements.</p>
-              <div className="prompt-stack">
-                <div className="prompt-card prompt-card--short"><div className="prompt-topline"><span>If the edges flicker</span><CopyButton id="flicker" compact /></div><p>{prompts.flicker}</p></div>
-                <div className="prompt-card prompt-card--short"><div className="prompt-topline"><span>If the patch doesn&apos;t line up</span><CopyButton id="alignment" compact /></div><p>{prompts.alignment}</p></div>
-                <div className="prompt-card prompt-card--short"><div className="prompt-topline"><span>If it looks too “cut out”</span><CopyButton id="feather" compact /></div><p>{prompts.feather}</p></div>
-              </div>
-            </div>
-          </section>
-
-          <section className="chapter chapter--learn">
-            <div className="chapter-heading">
-              <SectionTag>The engineer bit</SectionTag>
-              <h2>Actually understand it</h2>
-            </div>
-            <div className="chapter-body engineer-body">
-              <div className="engineer-art" aria-hidden="true" />
-              <div className="engineer-copy">
-                <p>Don&apos;t stop at “it works.” The prompt already asks Claude to comment every block — now <strong>read them.</strong> Then test yourself:</p>
-                <div className="prompt-card prompt-card--learn"><div className="prompt-topline"><span>Ask Claude</span><CopyButton id="learn" /></div><p>{prompts.learn}</p></div>
-                <p className="closing-line">Because as an engineer, you don&apos;t just want it to work — you want to know <em>how.</em></p>
-              </div>
-            </div>
-          </section>
-        </article>
+        <section className="live-guide" aria-label="How to use the live effect">
+          <div className="guide-title"><CircleHelp size={16} /><span>HOW TO MAKE THE WINDOW</span></div>
+          <div className="live-steps">
+            <div><b>01</b><p><strong>Start empty.</strong> Leave the frame before the initial snapshot.</p></div>
+            <ChevronRight size={16} />
+            <div><b>02</b><p><strong>Step back in.</strong> Raise both index fingers and join your thumbs below.</p></div>
+            <ChevronRight size={16} />
+            <div><b>03</b><p><strong>Hold the frame.</strong> The green outline means your cloak is active.</p></div>
+          </div>
+        </section>
       </main>
 
-      <footer className="site-footer">
-        <div><img src="/manus-storage/cloak-aperture-mark_2003c067.png" alt="" /><span>BUILD STRANGE THINGS IN THE BROWSER.</span></div>
-        <a href="#top" onClick={(event) => { event.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Back to top <ArrowDown size={14} /></a>
+      <footer className="app-footer">
+        <span><ShieldCheck size={14} />Your video stays in this browser session.</span>
+        <span>CAMERA · HANDS · POLYGON · BACKGROUND</span>
       </footer>
     </div>
   );

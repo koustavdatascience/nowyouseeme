@@ -51,3 +51,8 @@
 - [x] Replace the README with a brief playful nowyouseeme project description and Manus AI credit.
 - [x] Rename the GitHub repository to `nowyouseeme` and update the source remote.
 - [x] Align the selected Cloudflare Pages deployment with the renamed repository identity.
+
+## README Live Link
+
+- [x] Add the deployed `nowyouseemee.pages.dev` website link prominently to the README.
+- [ ] Push and verify the README update in the GitHub repository.

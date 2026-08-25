@@ -41,3 +41,9 @@
 
 - [x] Update the page title, application wordmark, and visible primary heading to Now You See Me.
 - [ ] Push the renamed application branding to the GitHub repository.
+
+## Repository Identity
+
+- [x] Replace the README with a brief playful nowyouseeme project description and Manus AI credit.
+- [ ] Rename the GitHub repository to `nowyouseeme` and update the source remote.
+- [ ] Align the selected Cloudflare Pages deployment with the renamed repository identity.

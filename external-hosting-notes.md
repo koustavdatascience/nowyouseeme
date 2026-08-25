@@ -12,3 +12,7 @@ The live invisibility-cloak app needs HTTPS for browser webcam permission prompt
 ## Cloudflare deployment status
 
 The Pages project `invisibility-cloak-app` was created successfully with the public subdomain `invisibility-cloak-app.pages.dev`. The account-level GitHub integration reported a Cloudflare installation error, so the repository cannot currently trigger deployments automatically. A direct Pages upload requires a Cloudflare Dashboard / Wrangler sign-in session.
+
+The Cloudflare Dashboard confirms the user is signed in and the direct-upload project exists. The Git-connected Pages flow now shows a **Connect GitHub** authorization control; completing that authorization is required before Cloudflare can select and build `koustavdatascience/invisibility-cloak-app` automatically.
+
+The GitHub authorization is now complete. Cloudflare’s Git deployment form has been configured with project name `nowyouseeme`, production branch `main`, build command `pnpm build`, and build output directory `dist/public`. Cloudflare currently proposes the unique free deployment subdomain `nowyouseeme-dcf.pages.dev`.

@@ -56,3 +56,9 @@
 
 - [x] Add the deployed `nowyouseemee.pages.dev` website link prominently to the README.
 - [ ] Push and verify the README update in the GitHub repository.
+
+## Repository Visual Assets
+
+- [x] Copy the project’s original visual assets into a documentation-only images folder.
+- [x] Add visual asset previews and direct repository links to the README.
+- [ ] Push and verify the image-enhanced README on GitHub.

@@ -55,10 +55,15 @@
 ## README Live Link
 
 - [x] Add the deployed `nowyouseemee.pages.dev` website link prominently to the README.
-- [ ] Push and verify the README update in the GitHub repository.
+- [x] Push and verify the README update in the GitHub repository.
 
 ## Repository Visual Assets
 
 - [x] Copy the project’s original visual assets into a documentation-only images folder.
 - [x] Add visual asset previews and direct repository links to the README.
-- [ ] Push and verify the image-enhanced README on GitHub.
+- [x] Push and verify the image-enhanced README on GitHub.
+
+## Header Icon Repair
+
+- [x] Replace the broken header image with a self-contained Retro-OS icon.
+- [ ] Verify the icon renders in the deployed site and push the fix to GitHub.

@@ -305,7 +305,7 @@ export default function Home() {
       <video ref={videoRef} className="camera-source" playsInline muted aria-hidden="true" />
       <header className="app-header">
         <a className="app-brand" href="#top" aria-label="Now You See Me application home">
-          <img src="/manus-storage/cloak-aperture-mark_2003c067.png" alt="" />
+          <span className="app-logo-mark" aria-hidden="true" />
           <span>NOWYOUSEEME.EXE</span>
         </a>
         <div className="header-status"><span className={appIsActive ? "status-lamp status-lamp--live" : "status-lamp"} />{appIsActive ? "CAMERA CONNECTED" : "SYSTEM READY"}</div>

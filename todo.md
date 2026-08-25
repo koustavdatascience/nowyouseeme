@@ -21,29 +21,33 @@
 
 ## External Hosting Preparation
 
-- [ ] Select the external static hosting provider and confirm HTTPS support for webcam access.
-- [ ] Prepare the build configuration and repository handoff for the selected provider.
-- [ ] Deploy or guide the provider-specific deployment process.
-- [ ] Verify the deployed site can request a webcam over HTTPS.
+- [x] Select the external static hosting provider and confirm HTTPS support for webcam access.
+- [x] Prepare the build configuration and repository handoff for the selected provider.
+- [x] Deploy or guide the provider-specific deployment process.
+- [x] Verify the deployed site can request a webcam over HTTPS.
 
 ## GitHub to Cloudflare Pages
 
 - [x] Add Cloudflare Pages build configuration and repository handoff documentation.
 - [x] Create a dedicated GitHub repository and push the complete application source.
-- [ ] Connect the repository to Cloudflare Pages and start the production deployment.
-- [ ] Verify the public `pages.dev` address and HTTPS webcam availability.
+- [x] Connect the repository to Cloudflare Pages and start the production deployment.
+- [x] Verify the public `pages.dev` address and HTTPS webcam availability.
 
 ## Selected Public Identity
 
-- [ ] Create and publish the selected `nowyouseeme.pages.dev` Cloudflare Pages project.
+- [x] Create and publish the selected `nowyouseemee.pages.dev` Cloudflare Pages project.
+
+## Hostname Alternative
+
+- [x] Check and, if available, use the exact `nowyouseemee.pages.dev` Cloudflare Pages hostname.
 
 ## Now You See Me Branding
 
 - [x] Update the page title, application wordmark, and visible primary heading to Now You See Me.
-- [ ] Push the renamed application branding to the GitHub repository.
+- [x] Push the renamed application branding to the GitHub repository.
 
 ## Repository Identity
 
 - [x] Replace the README with a brief playful nowyouseeme project description and Manus AI credit.
-- [ ] Rename the GitHub repository to `nowyouseeme` and update the source remote.
-- [ ] Align the selected Cloudflare Pages deployment with the renamed repository identity.
+- [x] Rename the GitHub repository to `nowyouseeme` and update the source remote.
+- [x] Align the selected Cloudflare Pages deployment with the renamed repository identity.

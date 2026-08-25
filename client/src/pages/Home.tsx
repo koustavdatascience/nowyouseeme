@@ -304,9 +304,9 @@ export default function Home() {
     <div className="cloak-app">
       <video ref={videoRef} className="camera-source" playsInline muted aria-hidden="true" />
       <header className="app-header">
-        <a className="app-brand" href="#top" aria-label="Invisibility Cloak application home">
+        <a className="app-brand" href="#top" aria-label="Now You See Me application home">
           <img src="/manus-storage/cloak-aperture-mark_2003c067.png" alt="" />
-          <span>CLOAK.EXE</span>
+          <span>NOWYOUSEEME.EXE</span>
         </a>
         <div className="header-status"><span className={appIsActive ? "status-lamp status-lamp--live" : "status-lamp"} />{appIsActive ? "CAMERA CONNECTED" : "SYSTEM READY"}</div>
       </header>
@@ -314,7 +314,7 @@ export default function Home() {
       <main id="top" className="app-main">
         <section className="app-intro" aria-labelledby="app-title">
           <p className="eyebrow"><span />CAMERA MASK UTILITY · V1.0</p>
-          <h1 id="app-title">INVISIBILITY<br />CLOAK</h1>
+          <h1 id="app-title">NOW YOU<br />SEE ME</h1>
           <p>Capture the room, step back in, then frame the space between your hands. The canvas restores your original background inside the polygon.</p>
         </section>
 

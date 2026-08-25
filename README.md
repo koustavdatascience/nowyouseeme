@@ -1,6 +1,6 @@
-# Invisibility Cloak
+# Now You See Me
 
-A browser-based invisibility-cloak effect built with React, a local webcam stream, and MediaPipe hand tracking. The app captures an empty-room background, detects the tips of two index fingers and two thumbs, and paints the matching snapshot region inside the resulting four-point polygon.
+Now You See Me is a browser-based invisibility-cloak effect built with React, a local webcam stream, and MediaPipe hand tracking. The app captures an empty-room background, detects the tips of two index fingers and two thumbs, and paints the matching snapshot region inside the resulting four-point polygon.
 
 ## Run locally
 

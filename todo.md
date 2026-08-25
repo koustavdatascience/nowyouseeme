@@ -29,6 +29,15 @@
 ## GitHub to Cloudflare Pages
 
 - [x] Add Cloudflare Pages build configuration and repository handoff documentation.
-- [ ] Create a dedicated GitHub repository and push the complete application source.
+- [x] Create a dedicated GitHub repository and push the complete application source.
 - [ ] Connect the repository to Cloudflare Pages and start the production deployment.
 - [ ] Verify the public `pages.dev` address and HTTPS webcam availability.
+
+## Selected Public Identity
+
+- [ ] Create and publish the selected `nowyouseeme.pages.dev` Cloudflare Pages project.
+
+## Now You See Me Branding
+
+- [x] Update the page title, application wordmark, and visible primary heading to Now You See Me.
+- [ ] Push the renamed application branding to the GitHub repository.

@@ -1,7 +1,7 @@
 /**
- * Style reminder — Field Manual for Browser Magic:
- * The guide is now a live creative-coding instrument: near-black stage, signal-lime tracking
- * feedback, technical utility surfaces, and no decorative interface that competes with the camera.
+ * Style reminder — Retro-OS Cloak Utility:
+ * Use the supplied Retro-OS kit as ground truth: off-white scanline workspace, blue title bars,
+ * 1px black borders, bitmap-like typography, and squared system controls around the live effect.
  */
 import { useEffect, useRef, useState } from "react";
 import {
@@ -306,16 +306,16 @@ export default function Home() {
       <header className="app-header">
         <a className="app-brand" href="#top" aria-label="Invisibility Cloak application home">
           <img src="/manus-storage/cloak-aperture-mark_2003c067.png" alt="" />
-          <span>INVISIBILITY / CLOAK</span>
+          <span>CLOAK.EXE</span>
         </a>
-        <div className="header-status"><span className={appIsActive ? "status-lamp status-lamp--live" : "status-lamp"} />{appIsActive ? "LOCAL CAMERA SESSION" : "PRIVATE BY DEFAULT"}</div>
+        <div className="header-status"><span className={appIsActive ? "status-lamp status-lamp--live" : "status-lamp"} />{appIsActive ? "CAMERA CONNECTED" : "SYSTEM READY"}</div>
       </header>
 
       <main id="top" className="app-main">
         <section className="app-intro" aria-labelledby="app-title">
-          <p className="eyebrow"><span />REAL-TIME CAMERA EFFECT</p>
-          <h1 id="app-title">Make a window<br />through yourself.</h1>
-          <p>Capture the room, step back in, then frame the space between your hands. The canvas paints your original background inside the polygon.</p>
+          <p className="eyebrow"><span />CAMERA MASK UTILITY · V1.0</p>
+          <h1 id="app-title">INVISIBILITY<br />CLOAK</h1>
+          <p>Capture the room, step back in, then frame the space between your hands. The canvas restores your original background inside the polygon.</p>
         </section>
 
         <section className="cloak-stage" aria-label="Live invisibility cloak camera stage">
@@ -324,8 +324,8 @@ export default function Home() {
           {!appIsActive && appState !== "loading" && (
             <div className="stage-placeholder">
               {appState === "error" ? <AlertTriangle size={33} /> : <Aperture size={38} />}
-              <p className="placeholder-kicker">{appState === "error" ? "CAMERA SETUP NEEDS ATTENTION" : "THE VIEWFINDER IS WAITING"}</p>
-              <strong>{appState === "error" ? "Permission or setup issue" : "Your empty room becomes the cloak"}</strong>
+              <p className="placeholder-kicker">{appState === "error" ? "CAMERA SETUP NEEDS ATTENTION" : "VIEWFINDER / OFFLINE"}</p>
+              <strong>{appState === "error" ? "Permission or setup issue" : "Awaiting camera input"}</strong>
               <span>{appState === "error" ? errorMessage : "Step out of frame before starting so the first snapshot has no subject in it."}</span>
             </div>
           )}

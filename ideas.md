@@ -33,3 +33,9 @@ The supplied Invisibility Cloak Guide website is the source-of-truth for this bu
 ## Style Decisions
 
 The build should maintain strong visual contrast, never use purple gradients or generic “startup” surfaces, and keep text legible on every panel. Generated artwork is used as a discreet visual texture or brand asset, not as a replacement for the instructional content. The guide remains frontend-only and does not itself request webcam access.
+
+## Current Ground-Truth UI Reference: Retro-OS Kit
+
+The supplied Retro-OS UI kit is the visual source-of-truth for the current live application redesign. Fidelity to its desktop-era utility styling overrides the previous dark field-manual direction while the live webcam and hand-tracking behavior remains unchanged.
+
+**Reference rules:** Use an off-white workspace with fine horizontal scanline texture; assemble the interface from hard-edged white and pale-gray panels; use 1px black outlines plus simple dark offset shadows; reserve saturated OS blue (`#0078D7`) for window title bars and primary buttons; use red (`#E81123`) only for destructive or close affordances; retain 4px or smaller corner radii; and render headings and labels in compact bitmap-like or strongly monospace type. The camera should become the main “application window,” controls should read as classic system buttons, and status text should appear in square utility strips. Avoid gradients, glass effects, broad soft shadows, oversized rounded rectangles, or neon styling.

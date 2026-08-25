@@ -8,4 +8,13 @@
 - [x] Fill the polygon using the matching region from the background snapshot and feather its edges.
 - [x] Add smoothing, live status feedback, orientation guidance, and responsive controls.
 - [x] Validate the production build and check the non-camera, permission, and active-camera states.
-- [ ] Save a checkpoint and deliver the application.
+- [x] Save a checkpoint and deliver the application.
+
+## Retro-OS UI Redesign
+
+- [x] Replace the dark technical shell with the supplied white, gray, blue, and red Retro-OS visual system.
+- [x] Convert the header, camera stage, controls, and status region into crisp bordered desktop-window components.
+- [x] Apply bitmap-style typography, square icon controls, classic blue buttons, and 1px black outlines.
+- [x] Preserve webcam startup, background recapture, two-hand tracking status, and cloak rendering behavior.
+- [x] Verify desktop and mobile layouts, then validate the production build.
+- [ ] Save and deliver the redesigned application.
